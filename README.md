@@ -37,7 +37,7 @@ O **PoliAcessivel** é um aplicativo Android nativo desenvolvido em Kotlin, cria
 ### Clonando o Repositório
 
 ```bash
-git clone https://github.com/seu-usuario/PoliAcessivel.git
+git clone https://github.com/CaiocSiqueira/PoliAcessivel.git
 cd PoliAcessivel
 ```
 
