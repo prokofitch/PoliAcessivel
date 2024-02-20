@@ -24,19 +24,20 @@ import org.tensorflow.lite.support.image.ops.ResizeOp
 
 class MainActivity : AppCompatActivity() {
 
-    lateinit var labels:List<String>
+    lateinit var labels: List<String>
     var colors = listOf<Int>(
         Color.BLUE, Color.GREEN, Color.RED, Color.CYAN, Color.GRAY, Color.BLACK,
-        Color.DKGRAY, Color.MAGENTA, Color.YELLOW, Color.RED)
+        Color.DKGRAY, Color.MAGENTA, Color.YELLOW, Color.RED
+    )
     val paint = Paint()
     lateinit var imageProcessor: ImageProcessor
-    lateinit var bitmap:Bitmap
+    lateinit var bitmap: Bitmap
     lateinit var imageView: ImageView
     lateinit var cameraDevice: CameraDevice
     lateinit var handler: Handler
     lateinit var cameraManager: CameraManager
     lateinit var textureView: TextureView
-    lateinit var model:SsdMobilenetV11Metadata1
+    lateinit var model: SsdMobilenetV11Metadata1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,7 +45,8 @@ class MainActivity : AppCompatActivity() {
         get_permission()
 
         labels = FileUtil.loadLabels(this, "labels.txt")
-        imageProcessor = ImageProcessor.Builder().add(ResizeOp(300, 300, ResizeOp.ResizeMethod.BILINEAR)).build()
+        imageProcessor =
+            ImageProcessor.Builder().add(ResizeOp(300, 300, ResizeOp.ResizeMethod.BILINEAR)).build()
         model = SsdMobilenetV11Metadata1.newInstance(this)
         val handlerThread = HandlerThread("videoThread")
         handlerThread.start()
@@ -53,10 +55,11 @@ class MainActivity : AppCompatActivity() {
         imageView = findViewById(R.id.imageView)
 
         textureView = findViewById(R.id.textureView)
-        textureView.surfaceTextureListener = object:TextureView.SurfaceTextureListener{
+        textureView.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
             override fun onSurfaceTextureAvailable(p0: SurfaceTexture, p1: Int, p2: Int) {
                 open_camera()
             }
+
             override fun onSurfaceTextureSizeChanged(p0: SurfaceTexture, p1: Int, p2: Int) {
             }
 
@@ -73,36 +76,50 @@ class MainActivity : AppCompatActivity() {
                 val locations = outputs.locationsAsTensorBuffer.floatArray
                 val classes = outputs.classesAsTensorBuffer.floatArray
                 val scores = outputs.scoresAsTensorBuffer.floatArray
-                val numberOfDetections = outputs.numberOfDetectionsAsTensorBuffer.floatArray
 
                 var mutable = bitmap.copy(Bitmap.Config.ARGB_8888, true)
                 val canvas = Canvas(mutable)
 
                 val h = mutable.height
                 val w = mutable.width
-                paint.textSize = h/15f
-                paint.strokeWidth = h/85f
-                var x = 0
+                paint.textSize = h / 15f
+                paint.strokeWidth = h / 85f
+
                 scores.forEachIndexed { index, fl ->
-                    val detectedClass = labels.get(classes.get(index).toInt())
-                    x = index
-                    x *= 4
-                    if(fl > 0.5){
-                        paint.setColor(colors.get(index))
+                    val detectedClass = labels[classes[index].toInt()]
+                    val x = index * 4
+                    if (fl > 0.5) {
+                        paint.color = colors[index]
                         paint.style = Paint.Style.STROKE
-                        canvas.drawRect(RectF(locations.get(x+1)*w, locations.get(x)*h, locations.get(x+3)*w, locations.get(x+2)*h), paint)
+                        canvas.drawRect(
+                            RectF(
+                                locations[x + 1] * w,
+                                locations[x] * h,
+                                locations[x + 3] * w,
+                                locations[x + 2] * h
+                            ), paint
+                        )
                         paint.style = Paint.Style.FILL
-                        canvas.drawText(labels.get(classes.get(index).toInt())+" "+fl.toString(), locations.get(x+1)*w, locations.get(x)*h, paint)
+                        canvas.drawText(
+                            "$detectedClass $fl",
+                            locations[x + 1] * w,
+                            locations[x] * h,
+                            paint
+                        )
                     }
                     if (detectedClass.toLowerCase() == "person" && fl > 0.5) {
                         // Se a classe for "person", exibe um AlertDialog
-                        showPersonDetectedAlertDialog()
+                        showAlertDialog("Person Detected", "A person was detected in the image!")
+                    } else if (detectedClass.toLowerCase() == "chair" && fl > 0.5) {
+                        // Se a classe for "chair", exibe um AlertDialog
+                        showAlertDialog("Chair Detected", "A chair was detected in the image!")
+                    } else if (detectedClass.toLowerCase() == "bench" && fl > 0.5) {
+                        // Se a classe for "bench", exibe um AlertDialog
+                        showAlertDialog("Bench Detected", "A bench was detected in the image!")
                     }
                 }
 
                 imageView.setImageBitmap(mutable)
-
-
             }
         }
 
@@ -116,55 +133,71 @@ class MainActivity : AppCompatActivity() {
     }
 
     @SuppressLint("MissingPermission")
-    fun open_camera(){
-        cameraManager.openCamera(cameraManager.cameraIdList[0], object:CameraDevice.StateCallback(){
-            override fun onOpened(p0: CameraDevice) {
-                cameraDevice = p0
+    fun open_camera() {
+        cameraManager.openCamera(
+            cameraManager.cameraIdList[0],
+            object : CameraDevice.StateCallback() {
+                override fun onOpened(p0: CameraDevice) {
+                    cameraDevice = p0
 
-                var surfaceTexture = textureView.surfaceTexture
-                var surface = Surface(surfaceTexture)
+                    var surfaceTexture = textureView.surfaceTexture
+                    var surface = Surface(surfaceTexture)
 
-                var captureRequest = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
-                captureRequest.addTarget(surface)
+                    var captureRequest =
+                        cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
+                    captureRequest.addTarget(surface)
 
-                cameraDevice.createCaptureSession(listOf(surface), object: CameraCaptureSession.StateCallback(){
-                    override fun onConfigured(p0: CameraCaptureSession) {
-                        p0.setRepeatingRequest(captureRequest.build(), null, null)
-                    }
-                    override fun onConfigureFailed(p0: CameraCaptureSession) {
-                    }
-                }, handler)
-            }
+                    cameraDevice.createCaptureSession(
+                        listOf(surface),
+                        object : CameraCaptureSession.StateCallback() {
+                            override fun onConfigured(p0: CameraCaptureSession) {
+                                p0.setRepeatingRequest(captureRequest.build(), null, null)
+                            }
 
-            override fun onDisconnected(p0: CameraDevice) {
+                            override fun onConfigureFailed(p0: CameraCaptureSession) {
+                            }
+                        },
+                        handler
+                    )
+                }
 
-            }
+                override fun onDisconnected(p0: CameraDevice) {
 
-            override fun onError(p0: CameraDevice, p1: Int) {
+                }
 
-            }
-        }, handler)
+                override fun onError(p0: CameraDevice, p1: Int) {
+
+                }
+            },
+            handler
+        )
     }
 
-    fun get_permission(){
-        if(ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED){
+    fun get_permission() {
+        if (ContextCompat.checkSelfPermission(
+                this,
+                android.Manifest.permission.CAMERA
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
             requestPermissions(arrayOf(android.Manifest.permission.CAMERA), 101)
         }
     }
+
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if(grantResults[0] != PackageManager.PERMISSION_GRANTED){
+        if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
             get_permission()
         }
     }
-    fun showPersonDetectedAlertDialog() {
+
+    fun showAlertDialog(title: String, message: String) {
         val alertDialogBuilder = AlertDialog.Builder(this)
-        alertDialogBuilder.setTitle("Pessoa Detectada")
-        alertDialogBuilder.setMessage("Uma pessoa foi detectada na imagem!")
+        alertDialogBuilder.setTitle(title)
+        alertDialogBuilder.setMessage(message)
         alertDialogBuilder.setPositiveButton("OK") { dialog, _ ->
             // Ação ao clicar no botão OK (opcional)
             dialog.dismiss()
@@ -174,4 +207,3 @@ class MainActivity : AppCompatActivity() {
         val alertDialog = alertDialogBuilder.create()
         alertDialog.show()
     }
-}
